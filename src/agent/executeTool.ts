@@ -1,4 +1,4 @@
-import { tools } from "./tools";
+import { tools } from "./tools/index.ts";
 
 export type ToolName = keyof typeof tools;
 
@@ -19,7 +19,8 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = await execute(args as any, {
     toolCallId: "",
-    messages: []
+    messages: [],
+    context: {}
   });
 
     return String(result);

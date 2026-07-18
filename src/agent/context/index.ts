@@ -4,7 +4,7 @@ export {
     estimateMessagesTokens,
     extractMessageText,
     type TokenUsage
-} from "./tokenEstimator";
+} from "./tokenEstimator.ts";
 
 // Model limits registry
 export {
@@ -12,7 +12,7 @@ export {
     getModelLimits,
     isOverThreshold,
     calculateusagePercentage,
-} from "./modelLimits"
+} from "./modelLimits.ts"
 
 // Conversation compaction
-export { compactConversation } from "./compaction"
+export { compactConversation } from "./compaction.ts"

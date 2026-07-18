@@ -1,14 +1,14 @@
 import React, { useState, useCallback } from "react";
 import { Box, Text, useApp } from "ink";
 import type { ModelMessage } from "ai";
-import { runAgent } from "../agent/run";
-import { MessageList, type Message } from "./components/MessageList";
-import { ToolCall, type ToolCallProps } from "./components/ToolCall";
+import { runAgent } from "../agent/run.ts";
+import { MessageList, type Message } from "./components/MessageList.tsx";
+import { ToolCall, type ToolCallProps } from "./components/ToolCall.tsx";
 import Spinner from "ink-spinner";
-import { Input } from "./components/Input";
-import { ToolApproval } from "./components/ToolApproval";
-import { TokenUsage } from "./components/TokenUsage";
-import type { ToolApprovalRequest, TokenUsageInfo } from "../types";
+import { Input } from "./components/Input.tsx";
+import { ToolApproval } from "./components/ToolApproval.tsx";
+import { TokenUsage } from "./components/TokenUsage.tsx";
+import type { ToolApprovalRequest, TokenUsageInfo } from "../types.ts";
 
 
 interface ActiveToolCall extends ToolCallProps {

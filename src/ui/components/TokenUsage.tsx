@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box,Text } from 'ink';
-import type { TokenUsageInfo } from '../../types';
+import type { TokenUsageInfo } from '../../types.ts';
 
 interface TokenUsageProps {
     usage: TokenUsageInfo | null;
