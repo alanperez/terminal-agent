@@ -1,0 +1,42 @@
+{
+  "name": "terminal-agent",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsx watch --env-file=.env src/index.ts",
+    "start": "tsx --env-file=.env src/index.ts",
+    "eval": "npx lmnr eval",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bin": {
+    "agi": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@ai-sdk/openai": "^4.0.11",
+    "@lmnr-ai/lmnr": "^0.8.38",
+    "@types/react": "^19.2.17",
+    "@types/shelljs": "^0.10.0",
+    "ai": "^7.0.22",
+    "dotenv": "^17.4.2",
+    "ink": "^7.1.1",
+    "ink-spinner": "^5.0.0",
+    "react": "^19.2.7",
+    "shelljs": "^0.10.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.3",
+    "@types/node": "^26.1.1",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2"
+  }
+}
