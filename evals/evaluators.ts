@@ -1,4 +1,4 @@
-import { generateObject } from "ai";
+import { generateObject, generateText, Output, streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 
@@ -8,6 +8,57 @@ import type {
   MultiTurnTarget,
   MultiTurnResult,
 } from "./types.ts";
+
+// LLM as a Judge zod schema
+const judgeSchema = z.object({
+    score: z.number().min(1).max(10).describe("Score from 1-10, where 10 is perfect"),
+    reason: z.string().describe("Brief explanation for the score") // In the eval, we can see why the judge selected the score, but by asking the LLM to give us a reason as to why it did what it did. It makes it think about it harder. Basically saying explain yourself / give me the steps that lead up to this conclusion. This improves the quality
+})
+
+
+/**
+ * Evaluator: LLM-as-Judge for output quality.
+ * Uses structured output to reliably asses if the agents response is correct
+ * Returns a score of 0-1 (internally uses 1-10 scale divided by 10)
+ */
+export async function llmJudge(
+  output: MultiTurnResult,
+  target: MultiTurnTarget,
+): Promise<number> {
+  const result = await generateObject({
+    model: openai("gpt-5.1"),
+    schema: judgeSchema,
+    schemaName: "evaluation",
+    providerOptions: {
+      openai: {
+        reasoningEffort: "high",
+      },
+    },
+    schemaDescription: "Evaluation of an AI agent response",
+    instructions: `You are an evaluation judge. Score the agent's response on a scale of 1-10.
+Scoring criteria:
+- 10: Response fully addresses the task using tool results correctly
+- 7-9: Response is mostly correct with minor issues
+- 4-6: Response partially addresses the task
+- 1-3: Response is mostly incorrect or irrelevant`,
+    messages: [
+      {
+        role: "user",
+        content: `Task: ${target.originalTask}
+Tools called: ${JSON.stringify(output.toolCallOrder)}
+Tool results provided: ${JSON.stringify(target.mockToolResults)}
+Agent's final response:
+${output.text}
+Evaluate if this response correctly uses the tool results to answer the task.`,
+      },
+    ],
+  });
+
+  // Convert 1-10 score to 0-1 range
+  return result.object.score / 10;
+}
+
+
 
 export function toolsSelected(
   output: SingleTurnResult | MultiTurnResult,

@@ -1,6 +1,6 @@
 import { tool, type ModelMessage, type ToolSet } from "ai";
 import { z } from "zod";
-import { SYSTEM_PROMPT } from "../src/agent/system/prompt.ts";
+import { SYSTEM_PROMPT } from "../src/agent/system/prompts.ts";
 import type { EvalData, MultiTurnEvalData } from "./types.ts";
 
 /**
@@ -37,7 +37,7 @@ export const buildMessages = (
 ): ModelMessage[] => {
   const systemPrompt = data.systemPrompt ?? SYSTEM_PROMPT;
   return [
-    { role: "system", content: systemPrompt },
+    // { role: "system", content: systemPrompt }, // v7 changes, had to comment it out since evals weren't running
     { role: "user", content: data.prompt! },
   ];
 };

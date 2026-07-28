@@ -1,14 +1,16 @@
-import { generateText, stepCountIs, tool, type ToolSet } from "ai";
+import type {
+    EvalData,
+    SingleTurnResult,
+    MultiTurnEvalData,
+    MultiTurnResult,
+
+} from "./types.ts"
+
+import { generateText, ModelMessage, stepCountIs, tool, type ToolSet } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
-
-import type {
-  EvalData,
-  SingleTurnResult,
-  MultiTurnEvalData,
-  MultiTurnResult,
-} from "./types.ts";
-import { buildMessages, buildMockedTools } from "./utils.ts";
+import { buildMessages, buildMockedTools } from "./utils.ts"
+import { SYSTEM_PROMPT } from "../src/agent/system/prompts.ts";
 
 /**
  * Tool definitions for mocked single-turn evaluations.
@@ -76,7 +78,8 @@ export async function singleTurnWithMocks(
 
   const result = await generateText({
     model: openai(data.config?.model ?? "gpt-4o-mini"),
-    messages,
+    instructions: data.systemPrompt ?? SYSTEM_PROMPT,
+    messages, // now only user/assistant/tool messages
     tools,
     stopWhen: stepCountIs(1),
     temperature: data.config?.temperature ?? undefined,
@@ -97,7 +100,66 @@ export async function singleTurnWithMocks(
   };
 }
 
+
 /**
- * Multi-turn executor with mocked tools.
- * Runs a complete agent loop with tools returning fixed values.
+ * Multi-turn executor with mocked tools
+ * Runs a complete agent loop with tools returning fixed values
  */
+export async function multiTurnWithMocks(
+    data: MultiTurnEvalData
+): Promise<MultiTurnResult> {
+    // Uses buildMockedTools to create tools with fixed return values
+    const tools = buildMockedTools(data.mockTools);
+
+    // Build messages from either prompt or pre filled history
+    const messages: ModelMessage[] = data.messages ?? [
+        // {
+        //     role: "system", content: SYSTEM_PROMPT // commented out, no longer works in v7, It injects the system role into messages and doesnt pass instructions
+        // },
+        {
+            role: "user", content: data.prompt!
+        }
+    ]; // supports both fresh prompts and pre filled message history.
+
+    const result = await generateText({
+        model: openai(data.config?.model ?? "gpt-5-mini"),
+        instructions: SYSTEM_PROMPT,
+        messages,
+        tools,
+        stopWhen: stepCountIs(data.config?.maxSteps ?? 20), // stepCountIs(20) prevents infinite loops
+    });
+
+    // Extract all tool calls in order from steps
+    const allToolCalls: string[] = [];
+
+    const steps = result.steps.map((step) => {
+        const stepToolCalls = (step.toolCalls ?? []).map((tc) => {
+            allToolCalls.push(tc.toolName);
+            return {
+                toolName: tc.toolName,
+                args: "args" in tc ? tc.args : {},
+            }
+        });
+
+        const stepToolResults = (step.toolResults ?? []).map((tr) => ({
+        toolName: tr.toolName,
+        result: "result" in tr ? tr.result : tr,
+        }));
+
+        return {
+            toolCalls: stepToolCalls.length > 0 ? stepToolCalls : undefined,
+            toolResults: stepToolResults.length > 0 ? stepToolResults : undefined,
+            text: step.text || undefined
+        }
+    });
+
+    // Extract unique tools used
+    const toolsUsed = [...new Set(allToolCalls)];
+    // return unique tools used and the full tool call order.
+    return {
+        text: result.text,
+        steps,
+        toolsUsed,
+        toolCallOrder: allToolCalls
+    }
+}
