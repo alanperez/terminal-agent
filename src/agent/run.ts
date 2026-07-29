@@ -12,6 +12,16 @@ import { tools } from "./tools/index.ts";
 import { executeTool } from "./executeTool.ts";
 import { filterCompatibleMessages } from "./system/filterMessages.ts";
 
+import {
+    estimateMessagesTokens,
+    getModelLimits,
+    isOverThreshold,
+    calculateusagePercentage,
+    compactConversation,
+    DEFAULT_THRESHOLD,
+
+} from "./context/index.ts"
+
 const model = "gpt-5-mini";
 
 // Laminar.initialize()
@@ -23,10 +33,30 @@ registerTelemetry(
     })
 )
 
-export async function runAgent( userMessage: string, conversationHistory: ModelMessage[], callbacks: AgentCallbacks): Promise<any> {
+export async function runAgent( userMessage: string, conversationHistory: ModelMessage[], callbacks: AgentCallbacks): Promise<ModelMessage[]> {
     
+    const modelLimits = getModelLimits(model);
+
     // Filter and check if we need to compact the conversation history before starting
-    const workingHistory = filterCompatibleMessages(conversationHistory);
+    let workingHistory = filterCompatibleMessages(conversationHistory);
+
+    const preCheckTokens = estimateMessagesTokens([
+        {
+            role: "system",
+            content: SYSTEM_PROMPT
+        },
+        ...workingHistory,
+        {
+            role: "user",
+            content: userMessage
+        }
+    ])
+
+    if (isOverThreshold(preCheckTokens.total, modelLimits.contextWindow)) {
+        // Compact conversation
+        workingHistory = await compactConversation(workingHistory, model);
+    }
+
 
     const messages: ModelMessage[] = [
         // {
@@ -39,6 +69,32 @@ export async function runAgent( userMessage: string, conversationHistory: ModelM
     ];
 
     let fullResponse = "";
+
+    // Report initial token usage
+    const reportTokenUsage = () => {
+        if(callbacks.onTokenUsage) {
+            const usage = estimateMessagesTokens(messages);
+            callbacks.onTokenUsage({
+                inputTokens: usage.input,
+                outputTokens: usage.output,
+                totalTokens: usage.total,
+                contextWindow: modelLimits.contextWindow,
+                threshold: DEFAULT_THRESHOLD,
+                percentage: calculateusagePercentage(
+                    usage.total,
+                    modelLimits.contextWindow
+                ),
+            });
+        }
+    }
+
+
+    // We call this function after each significant change to messages
+    // - After adding response messages
+    // - After adding tool results
+    reportTokenUsage()
+
+    
 
     while(true) {
         const result = streamText({
