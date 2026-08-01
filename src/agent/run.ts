@@ -153,13 +153,27 @@ export async function runAgent( userMessage: string, conversationHistory: ModelM
         if(finishReason !== "tool-calls" || toolCalls.length === 0) {
             const responseMessages = await result.response; // .response is deprecated
             messages.push(...responseMessages.messages);
+            reportTokenUsage();
             break;
         }
 
         const responseMessages = await result.response;
         messages.push(...responseMessages.messages);
+        reportTokenUsage();
+
+        // Process tool calls sequentially with approval for each
+        let rejected = false;
+
 
         for( const tc of toolCalls) {
+
+            const approved = await callbacks.onToolApproval(tc.toolName, tc.args)
+
+            if(!approved) {
+                rejected = true;
+                break;
+            }
+            
             const result = await executeTool(tc.toolName, tc.args);
             callbacks.onToolCallEnd(tc.toolName, result);
 
@@ -173,7 +187,11 @@ export async function runAgent( userMessage: string, conversationHistory: ModelM
                         output:  { type: "text", value: result }
                     },
                 ]
-            })
+            }),
+            reportTokenUsage()
+        }
+        if(rejected) {
+            break;
         }
     }
     callbacks.onComplete(fullResponse);
